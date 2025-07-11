@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cohere Chatbot</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #d1c4e9, #b3e5fc);
+      padding: 20px;
+    }
+    .chat-container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+    }
+    .chat-box {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      padding: 15px;
+      background: #fdfdfd;
+      border-radius: 12px;
+    }
+    .message {
+      margin: 12px 0;
+      line-height: 1.5;
+      padding: 10px 15px;
+      border-radius: 12px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .user {
+      background-color: #e3f2fd;
+      align-self: flex-end;
+      color: #0d47a1;
+    }
+    .bot {
+      background-color: #ede7f6;
+      align-self: flex-start;
+      color: #4a148c;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 12px 20px;
+      background-color: #673ab7;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background-color: #512da8;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div id="chatBox" class="chat-box"></div>
+    <div class="input-group">
+      <input id="userInput" type="text" placeholder="Ask me anything..." onkeypress="if(event.key==='Enter') sendMessage()" />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const apiKey = "n4qm6dFsBSYFdNb28BIW4yo8S2EKK3pmzxouKG8g";
+
+    function appendMessage(sender, text, className) {
+      const chatBox = document.getElementById("chatBox");
+      const msg = document.createElement("div");
+      msg.className = `message ${className}`;
+      msg.innerHTML = `<strong>${sender}:</strong><br>${text}`;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const question = input.value.trim();
+      if (!question) return;
+
+      appendMessage("You", question, "user");
+      input.value = "";
+
+      const name = localStorage.getItem("chat_name");
+      const roll = localStorage.getItem("chat_roll");
+
+      try {
+        const res = await fetch("https://api.cohere.ai/v1/chat", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: question,
+            model: "command-r-plus",
+            temperature: 0.7,
+            chat_history: []
+          })
+        });
+
+        const data = await res.json();
+        const answer = data?.text || "No response from Cohere.";
+        appendMessage("Bot", answer, "bot");
+
+        await fetch("http://localhost:5000/save-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, roll, question, answer })
+        });
+      } catch {
+        appendMessage("Bot", "⚠️ Failed to fetch response.", "bot");
+      }
+    }
+  </script>
+</body>
+</html>
